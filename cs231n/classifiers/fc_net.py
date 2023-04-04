@@ -34,25 +34,21 @@ class FullyConnectedNet(object):
             dtype=np.float32,
             seed=None,
     ):
-        """Initialize a new FullyConnectedNet.
-
-        Inputs:
-        - hidden_dims: A list of integers giving the size of each hidden layer.
-        - input_dim: An integer giving the size of the input.
-        - num_classes: An integer giving the number of classes to classify.
-        - dropout_keep_ratio: Scalar between 0 and 1 giving dropout strength.
-            If dropout_keep_ratio=1 then the network should not use dropout at all.
-        - normalization: What type of normalization the network should use. Valid values
-            are "batchnorm", "layernorm", or None for no normalization (the default).
-        - reg: Scalar giving L2 regularization strength.
-        - weight_scale: Scalar giving the standard deviation for random
-            initialization of the weights.
-        - dtype: A numpy datatype object; all computations will be performed using
-            this datatype. float32 is faster but less accurate, so you should use
-            float64 for numeric gradient checking.
-        - seed: If not None, then pass this random seed to the dropout layers.
-            This will make the dropout layers deteriminstic so we can gradient check the model.
         """
+        Initialize a new FullyConnectedNet
+
+        Args:
+            hidden_dims:一个整数列表，给出每个隐藏层大小
+            input_dim:一个整数，给出输入维度大小
+            num_classes:一个整数，给出要分类的类的数量
+            dropout_keep_ratio: 介于 0_1 之间的标量，给出 dropout强度,如果 dropout_keep_ratio=1，则网络不使用dropout
+            normalization:网络使用正则化的类型. 有效值为: "batchnorm", "layernorm", or None 表示无正则化(默认值)
+            reg:一个标量，给出L2正则化强度。
+            weight_scale:标量，给出权重随机初始化的标准偏差
+            dtype:numpy数据类型对象；所有计算都将使用此数据类型执行,float32速度更快，但精度较低，因此应该使用 float64进行数值梯度检查.
+            seed:If not None, 则将此随机种子传递到 Dropout层,这将使 Dropout层具有决定性，因此我们可以对模型进行梯度检查
+        """
+
         self.normalization = normalization
         self.use_dropout = dropout_keep_ratio != 1
         self.reg = reg
@@ -74,10 +70,17 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        self.params['W1'] = weight_scale * np.random.randn(input_dim, hidden_dims)
-        self.params['b1'] = np.zeros(hidden_dims)
-        self.params['W2'] = weight_scale * np.random.randn(hidden_dims, num_classes)
-        self.params['b2'] = np.zeros(num_classes)
+        for i in range(len(hidden_dims)):
+            D = hidden_dims[i]
+            self.params['W' + str(i + 1)] = weight_scale * np.random.randn(input_dim, D)
+            self.params['b' + str(i + 1)] = np.zeros(D)
+            if normalization is not None and normalization == 'batchnorm':
+                self.params['gamma' + str(i + 1)] = np.ones(D)
+                self.params['beta' + str(i + 1)] = np.zeros(D)
+            input_dim = D
+        self.params['W' + str(self.num_layers)] = weight_scale * np.random.randn(input_dim, num_classes)
+        self.params['b' + str(self.num_layers)] = np.zeros(num_classes)
+        pass
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
