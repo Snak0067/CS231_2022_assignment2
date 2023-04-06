@@ -154,6 +154,23 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+        cache = {}
+        cache_dropout = {}
+        input_x = X
+        for i in range(self.num_layers - 1):
+            W = self.params['W' + str(i + 1)]
+            b = self.params['b' + str(i + 1)]
+            # 如果要用batch normalization，一般是在ReLU层前用
+            # if self.normalization == "batchnorm":
+            #     gamma = self.params['gamma' + str(i + 1)]
+            #     beta = self.params['beta' + str(i + 1)]
+            #     bn_param = self.bn_params[i]
+            #     input_x, cache[i] = conv_bn_relu_forward(input_x, W, b, gamma, beta, bn_param)
+            input_x, cache[i] = affine_relu_forward(input_x, W, b)
+            if self.use_dropout:
+                input_x, cache_dropout[i] = dropout_forward(input_x, self.dropout_param)
+        W, b = self.params['W' + str(self.num_layers)], self.params['b' + str(self.num_layers)]
+        scores, cache[self.num_layers - 1] = affine_forward(input_x, W, b)
         pass
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
@@ -181,7 +198,23 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        loss, dscore = softmax_loss(scores, y)
+        W = self.params['W' + str(self.num_layers)]
+        loss += self.reg * 0.5 * np.sum(W * W)
+        dhidden, dw, db = affine_backward(dscore, cache[self.num_layers - 1])
+        grads['W' + str(self.num_layers)] = dw + self.reg * W
+        grads['b' + str(self.num_layers)] = db
+
+        for i in range(self.num_layers - 1, 0, -1):
+            W = self.params['W' + str(i)]
+            loss += self.reg * 0.5 * np.sum(W ** 2)
+            # dropout层在ReLU层后面，所以先计算它的反向求导
+            if self.use_dropout:
+                dhidden = dropout_backward(dhidden, cache_dropout[i - 1])
+            else:
+                dhidden, dw, db = affine_relu_backward(dhidden, cache[i - 1])
+            grads['W' + str(i)] = dw + self.reg * W
+            grads['b' + str(i)] = db
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################

@@ -11,6 +11,13 @@ from cs231n.gradient_check import eval_numerical_gradient, eval_numerical_gradie
 from cs231n.solver import Solver
 
 data = get_CIFAR10_data()
+num_train = 50
+small_data = {
+    "X_train": data["X_train"][:num_train],
+    "y_train": data["y_train"][:num_train],
+    "X_val": data["X_val"],
+    "y_val": data["y_val"],
+}
 
 
 def rel_error(x, y):
@@ -47,5 +54,48 @@ def initial_Loss_and_Gradient_check():
             print(f"{name} relative error: {rel_error(grad_num, grads[name])}")
 
 
+def model_tweaking(learning_rate, weight_scale):
+    model = FullyConnectedNet(
+        [100, 100, 100, 100],
+        weight_scale=weight_scale,
+        dtype=np.float64
+    )
+    solver = Solver(
+        model,
+        small_data,
+        print_every=10,
+        num_epochs=20,
+        batch_size=25,
+        update_rule="sgd",
+        optim_config={"learning_rate": learning_rate},
+    )
+    solver.train()
+    return solver.train_acc_history, solver.loss_history
+
+
+def sanity_check():
+    # TODO: Use a three-layer Net to overfit 50 training examples by
+    # tweaking just the learning rate and initialization scale.
+
+    not_reach = True
+    bset_lr, best_wc, loss_history = None, None, None
+    while not_reach:
+        weight_scale = 10 ** (np.random.uniform(-6, -1))
+        learning_rate = 10 ** (np.random.uniform(-4, -1))
+        train_acc_history, loss_history = model_tweaking(learning_rate, weight_scale)
+        if max(train_acc_history) == 1.0:
+            not_reach = False
+            best_lr = learning_rate
+            best_wc = weight_scale
+            print("best learning_rate is %f,weight_scale is %f "
+                  "five-layer network to overfit on 50 training examples" % (best_lr, best_wc))
+    plt.plot(loss_history)
+    plt.title("Training loss history")
+    plt.xlabel("Iteration")
+    plt.ylabel("Training loss")
+    plt.grid(linestyle='--', linewidth=0.5)
+    plt.show()
+
+
 if __name__ == '__main__':
-    initial_Loss_and_Gradient_check()
+    sanity_check()

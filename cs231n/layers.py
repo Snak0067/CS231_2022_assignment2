@@ -24,8 +24,7 @@ def affine_forward(x, w, b):
     # TODO: Copy over your solution from Assignment 1.                        #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-    pass
+    out = np.reshape(x, (x.shape[0], -1)).dot(w) + b
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -57,7 +56,10 @@ def affine_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    db = np.sum(dout, axis=0)
+    dw = np.dot(np.reshape(x, (x.shape[0], -1)).T, dout)
+    dx = np.dot(dout, w.T)
+    dx = np.reshape(dx, x.shape)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -82,7 +84,8 @@ def relu_forward(x):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    out = x.copy()
+    out[out < 0] = 0
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -108,7 +111,9 @@ def relu_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    dx = np.zeros(x.shape)
+    dx[x > 0] = 1
+    dx = np.multiply(dout, dx)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -137,7 +142,13 @@ def softmax_loss(x, y):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    probs = np.exp(x - np.max(x, axis=1, keepdims=True))
+    probs /= np.sum(probs, axis=1, keepdims=True)
+    N = x.shape[0]
+    loss = -np.sum(np.log(probs[np.arange(N), y])) / N
+    dx = probs.copy()
+    dx[np.arange(N), y] -= 1
+    dx /= N
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
