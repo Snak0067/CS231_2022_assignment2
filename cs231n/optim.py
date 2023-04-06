@@ -154,7 +154,18 @@ def adam(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    learning_rate = config['learning_rate']
+    beta1 = config['beta1']
+    beta2 = config['beta2']
+    epsilon = config['epsilon']
+
+    # Value after the update
+    config['t'] += 1
+    config['m'] = beta1 * config['m'] + (1 - beta1) * dw
+    config['v'] = beta2 * config['v'] + (1 - beta2) * dw ** 2
+    mt_hat = config['m'] / (1 - beta1 ** config['t'])
+    vt_hat = config['v'] / (1 - beta2 ** config['t'])
+    next_w = w - learning_rate * mt_hat / (np.sqrt(vt_hat + epsilon))
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################

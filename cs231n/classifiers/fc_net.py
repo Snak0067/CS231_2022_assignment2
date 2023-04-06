@@ -70,17 +70,18 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        for i in range(len(hidden_dims)):
-            D = hidden_dims[i]
-            self.params['W' + str(i + 1)] = weight_scale * np.random.randn(input_dim, D)
-            self.params['b' + str(i + 1)] = np.zeros(D)
-            if normalization is not None and normalization == 'batchnorm':
-                self.params['gamma' + str(i + 1)] = np.ones(D)
-                self.params['beta' + str(i + 1)] = np.zeros(D)
-            input_dim = D
-        self.params['W' + str(self.num_layers)] = weight_scale * np.random.randn(input_dim, num_classes)
-        self.params['b' + str(self.num_layers)] = np.zeros(num_classes)
-        pass
+        if type(hidden_dims) != list:
+            raise ValueError('hidden_dim has to be a list')
+
+        self.L = len(hidden_dims) + 1
+        self.N = input_dim
+        self.C = num_classes
+        dims = [self.N] + hidden_dims + [self.C]
+        Ws = {'W' + str(i + 1): weight_scale * np.random.randn(dims[i], dims[i + 1]) for i in range(len(dims) - 1)}
+        b = {'b' + str(i + 1): np.zeros(dims[i + 1]) for i in range(len(dims) - 1)}
+
+        self.params.update(b)
+        self.params.update(Ws)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -103,7 +104,15 @@ class FullyConnectedNet(object):
         # pass of the second batch normalization layer, etc.
         self.bn_params = []
         if self.normalization == "batchnorm":
-            self.bn_params = [{"mode": "train"} for i in range(self.num_layers - 1)]
+            self.bn_params = {'bn_param' + str(i + 1): {'mode': 'train',
+                                                        'running_mean': np.zeros(dims[i + 1]),
+                                                        'running_var': np.zeros(dims[i + 1])}
+                              for i in range(len(dims) - 2)}
+            gammas = {'gamma' + str(i + 1): np.ones(dims[i + 1]) for i in range(len(dims) - 2)}
+            betas = {'beta' + str(i + 1): np.zeros(dims[i + 1]) for i in range(len(dims) - 2)}
+            self.params.update(betas)
+            self.params.update(gammas)
+
         if self.normalization == "layernorm":
             self.bn_params = [{} for i in range(self.num_layers - 1)]
 
@@ -137,8 +146,8 @@ class FullyConnectedNet(object):
         if self.use_dropout:
             self.dropout_param["mode"] = mode
         if self.normalization == "batchnorm":
-            for bn_param in self.bn_params:
-                bn_param["mode"] = mode
+            for key, bn_param in self.bn_params:
+                bn_param[mode] = mode
         scores = None
         ############################################################################
         # TODO: Implement the forward pass for the fully connected net, computing  #
@@ -154,24 +163,51 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        cache = {}
-        cache_dropout = {}
-        input_x = X
-        for i in range(self.num_layers - 1):
-            W = self.params['W' + str(i + 1)]
-            b = self.params['b' + str(i + 1)]
-            # 如果要用batch normalization，一般是在ReLU层前用
-            # if self.normalization == "batchnorm":
-            #     gamma = self.params['gamma' + str(i + 1)]
-            #     beta = self.params['beta' + str(i + 1)]
-            #     bn_param = self.bn_params[i]
-            #     input_x, cache[i] = conv_bn_relu_forward(input_x, W, b, gamma, beta, bn_param)
-            input_x, cache[i] = affine_relu_forward(input_x, W, b)
+        hidden = {}
+        hidden['h0'] = X.reshape(X.shape[0], np.prod(X.shape[1:]))
+        if self.use_dropout:
+            # dropout on the input layer
+            hdrop, cache_hdrop = dropout_forward(hidden['h0'], self.dropout_param)
+            hidden['hdrop0'], hidden['cache_hdrop0'] = hdrop, cache_hdrop
+
+        for i in range(self.L):
+            idx = i + 1
+            # Naming of the variable
+            w = self.params['W' + str(idx)]
+            b = self.params['b' + str(idx)]
+            h = hidden['h' + str(idx - 1)]
             if self.use_dropout:
-                input_x, cache_dropout[i] = dropout_forward(input_x, self.dropout_param)
-        W, b = self.params['W' + str(self.num_layers)], self.params['b' + str(self.num_layers)]
-        scores, cache[self.num_layers - 1] = affine_forward(input_x, W, b)
-        pass
+                h = hidden['hdrop' + str(idx - 1)]
+            if self.normalization == "batchnorm" and idx != self.L:
+                gamma = self.params['gamma' + str(idx)]
+                beta = self.params['beta' + str(idx)]
+                bn_param = self.bn_params['bn_param' + str(idx)]
+
+            # Computing of the forward pass.
+            # Special case of the last layer (output)
+            if idx == self.L:
+                h, cache_h = affine_forward(h, w, b)
+                hidden['h' + str(idx)] = h
+                hidden['cache_h' + str(idx)] = cache_h
+
+            # For all other layers
+            else:
+                if self.normalization == "batchnorm":
+                    h, cache_h = affine_norm_relu_forward(h, w, b, gamma, beta, bn_param)
+                    hidden['h' + str(idx)] = h
+                    hidden['cache_h' + str(idx)] = cache_h
+                else:
+                    h, cache_h = affine_relu_forward(h, w, b)
+                    hidden['h' + str(idx)] = h
+                    hidden['cache_h' + str(idx)] = cache_h
+
+                if self.use_dropout:
+                    h = hidden['h' + str(idx)]
+                    hdrop, cache_hdrop = dropout_forward(h, self.dropout_param)
+                    hidden['hdrop' + str(idx)] = hdrop
+                    hidden['cache_hdrop' + str(idx)] = cache_hdrop
+
+        scores = hidden['h' + str(self.L)]
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -198,23 +234,59 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        loss, dscore = softmax_loss(scores, y)
-        W = self.params['W' + str(self.num_layers)]
-        loss += self.reg * 0.5 * np.sum(W * W)
-        dhidden, dw, db = affine_backward(dscore, cache[self.num_layers - 1])
-        grads['W' + str(self.num_layers)] = dw + self.reg * W
-        grads['b' + str(self.num_layers)] = db
+        # Computing of the loss
+        data_loss, dscores = softmax_loss(scores, y)
+        reg_loss = 0
+        for w in [self.params[f] for f in self.params.keys() if f[0] == 'W']:
+            reg_loss += 0.5 * self.reg * np.sum(w * w)
 
-        for i in range(self.num_layers - 1, 0, -1):
-            W = self.params['W' + str(i)]
-            loss += self.reg * 0.5 * np.sum(W ** 2)
-            # dropout层在ReLU层后面，所以先计算它的反向求导
-            if self.use_dropout:
-                dhidden = dropout_backward(dhidden, cache_dropout[i - 1])
+        loss = data_loss + reg_loss
+
+        # Backward pass
+
+        hidden['dh' + str(self.L)] = dscores
+        for i in range(self.L)[::-1]:
+            idx = i + 1
+            dh = hidden['dh' + str(idx)]
+            h_cache = hidden['cache_h' + str(idx)]
+            if idx == self.L:
+                dh, dw, db = affine_backward(dh, h_cache)
+                hidden['dh' + str(idx - 1)] = dh
+                hidden['dW' + str(idx)] = dw
+                hidden['db' + str(idx)] = db
+
             else:
-                dhidden, dw, db = affine_relu_backward(dhidden, cache[i - 1])
-            grads['W' + str(i)] = dw + self.reg * W
-            grads['b' + str(i)] = db
+                if self.use_dropout:
+                    # First backprop in the dropout layer
+                    cache_hdrop = hidden['cache_hdrop' + str(idx)]
+                    dh = dropout_backward(dh, cache_hdrop)
+                if self.normalization == "batchnorm":
+                    dh, dw, db, dgamma, dbeta = affine_norm_relu_backward(dh, h_cache)
+                    hidden['dh' + str(idx - 1)] = dh
+                    hidden['dW' + str(idx)] = dw
+                    hidden['db' + str(idx)] = db
+                    hidden['dgamma' + str(idx)] = dgamma
+                    hidden['dbeta' + str(idx)] = dbeta
+                else:
+                    dh, dw, db = affine_relu_backward(dh, h_cache)
+                    hidden['dh' + str(idx - 1)] = dh
+                    hidden['dW' + str(idx)] = dw
+                    hidden['db' + str(idx)] = db
+
+        # w gradients where we add the regulariation term
+        list_dw = {key[1:]: val + self.reg * self.params[key[1:]] for key, val in hidden.iteritems() if key[:2] == 'dW'}
+        # Paramerters b
+        list_db = {key[1:]: val for key, val in hidden.iteritems() if key[:2] == 'db'}
+        # Parameters gamma
+        list_dgamma = {key[1:]: val for key, val in hidden.iteritems() if key[:6] == 'dgamma'}
+        # Paramters beta
+        list_dbeta = {key[1:]: val for key, val in hidden.iteritems() if key[:5] == 'dbeta'}
+
+        grads = {}
+        grads.update(list_dw)
+        grads.update(list_db)
+        grads.update(list_dgamma)
+        grads.update(list_dbeta)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
