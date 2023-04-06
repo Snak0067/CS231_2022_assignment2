@@ -146,7 +146,7 @@ class FullyConnectedNet(object):
         if self.use_dropout:
             self.dropout_param["mode"] = mode
         if self.normalization == "batchnorm":
-            for key, bn_param in self.bn_params:
+            for bn_param in self.bn_params:
                 bn_param[mode] = mode
         scores = None
         ############################################################################
@@ -274,13 +274,13 @@ class FullyConnectedNet(object):
                     hidden['db' + str(idx)] = db
 
         # w gradients where we add the regulariation term
-        list_dw = {key[1:]: val + self.reg * self.params[key[1:]] for key, val in hidden.iteritems() if key[:2] == 'dW'}
+        list_dw = {key[1:]: val + self.reg * self.params[key[1:]] for key, val in hidden if key[:2] == 'dW'}
         # Paramerters b
-        list_db = {key[1:]: val for key, val in hidden.iteritems() if key[:2] == 'db'}
+        list_db = {key[1:]: val for key, val in hidden if key[:2] == 'db'}
         # Parameters gamma
-        list_dgamma = {key[1:]: val for key, val in hidden.iteritems() if key[:6] == 'dgamma'}
+        list_dgamma = {key[1:]: val for key, val in hidden if key[:6] == 'dgamma'}
         # Paramters beta
-        list_dbeta = {key[1:]: val for key, val in hidden.iteritems() if key[:5] == 'dbeta'}
+        list_dbeta = {key[1:]: val for key, val in hidden if key[:5] == 'dbeta'}
 
         grads = {}
         grads.update(list_dw)
