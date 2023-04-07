@@ -242,7 +242,6 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        # Now I just write code without batch/layer norm and dropout layer--2019/8/18
         ############################ compute loss ##################################
         data_loss, dscores = softmax_loss(scores, y)
         reg_loss = 0.0

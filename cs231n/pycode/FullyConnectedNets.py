@@ -277,7 +277,8 @@ def plot_training_history(title, label, baseline, bn_solvers, plot_fn, bl_marker
 
 if __name__ == '__main__':
     batch_sizes = [5, 10, 50, 500]
-    bn_solvers_bsize, solver_bsize, batch_sizes = run_batchsize_experiments('batchnorm')
+    # bn_solvers_bsize, solver_bsize, batch_sizes = run_batchsize_experiments('batchnorm')
+    bn_solvers_bsize, solver_bsize, batch_sizes = run_batchsize_experiments('layernorm')
 
     plt.subplot(2, 1, 1)
     plot_training_history('Training accuracy (Batch Normalization)', 'Epoch', solver_bsize, bn_solvers_bsize,
