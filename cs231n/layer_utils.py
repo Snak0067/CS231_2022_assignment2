@@ -136,13 +136,16 @@ def affine_norm_relu_forward(x, w, b, gamma, beta, bn_param):
     - out: Output from the ReLU
     - cache: Object to give to the backward pass
     """
+    # 向前传播
+    hidden, hidden_cache = affine_forward(x, w, b)
+    # 批量归一化
+    hidden_norm, hidden_norm_cache = batchnorm_forward(hidden, gamma, beta, bn_param)
+    # 激活函数RuLU
+    hidden_normrelu, relu_cache = relu_forward(hidden_norm)
+    # 存储以进行反向传播
+    cache = (hidden_cache, hidden_norm_cache, relu_cache)
 
-    h, h_cache = affine_forward(x, w, b)
-    hnorm, hnorm_cache = batchnorm_forward(h, gamma, beta, bn_param)
-    hnormrelu, relu_cache = relu_forward(hnorm)
-    cache = (h_cache, hnorm_cache, relu_cache)
-
-    return hnormrelu, cache
+    return hidden_normrelu, cache
 
 
 def affine_norm_relu_backward(dout, cache):

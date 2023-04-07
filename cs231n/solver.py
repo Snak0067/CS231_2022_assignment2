@@ -122,7 +122,7 @@ class Solver(object):
         self.y_val = data["y_val"]
 
         # Unpack keyword arguments
-        self.update_rule = kwargs.pop("update_rule", "sgd")
+        self.update_rule = kwargs.pop("update_rule", "sgd_momentum")
         self.optim_config = kwargs.pop("optim_config", {})
         self.lr_decay = kwargs.pop("lr_decay", 1.0)
         self.batch_size = kwargs.pop("batch_size", 100)
@@ -269,16 +269,14 @@ class Solver(object):
                     % (t + 1, num_iterations, self.loss_history[-1])
                 )
 
-            # At the end of every epoch, increment the epoch counter and decay
-            # the learning rate.
+            # 在每个epoch结束时，递增epoch计数器并衰减学习速率(learning_rate)
             epoch_end = (t + 1) % iterations_per_epoch == 0
             if epoch_end:
                 self.epoch += 1
                 for k in self.optim_configs:
                     self.optim_configs[k]["learning_rate"] *= self.lr_decay
 
-            # Check train and val accuracy on the first iteration, the last
-            # iteration, and at the end of each epoch.
+            # 在第一次迭代、最后一次迭代以及每个epoch结束时检查train和val的准确性
             first_it = t == 0
             last_it = t == num_iterations - 1
             if first_it or last_it or epoch_end:
@@ -298,12 +296,12 @@ class Solver(object):
                         % (self.epoch, self.num_epochs, train_acc, val_acc)
                     )
 
-                # Keep track of the best model
+                # 跟踪最佳模型
                 if val_acc > self.best_val_acc:
                     self.best_val_acc = val_acc
                     self.best_params = {}
                     for k, v in self.model.params.items():
                         self.best_params[k] = v.copy()
 
-        # At the end of training swap the best params into the model
+        # 在训练结束时，将最佳参数交换到模型中
         self.model.params = self.best_params

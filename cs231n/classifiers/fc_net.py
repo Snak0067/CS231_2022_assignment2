@@ -141,30 +141,24 @@ class FullyConnectedNet(object):
         X = X.astype(self.dtype)
         mode = "test" if y is None else "train"
 
-        # Set train/test mode for batchnorm params and dropout param since they
-        # behave differently during training and testing.
+        # 设置batch-norm参数和dropout参数的训练/测试模式，因为它们在训练和测试过程中表现不同。
         if self.use_dropout:
             self.dropout_param["mode"] = mode
         if self.normalization == "batchnorm":
-            for bn_param in self.bn_params:
+            for key, bn_param in self.bn_params.items():
                 bn_param[mode] = mode
         scores = None
         ############################################################################
-        # TODO: Implement the forward pass for the fully connected net, computing  #
-        # the class scores for X and storing them in the scores variable.          #
+        # TODO: 为完全连接的网络实现正向传递，计算X的类分数并将其存储在分数变量中           #
         #                                                                          #
-        # When using dropout, you'll need to pass self.dropout_param to each       #
-        # dropout forward pass.                                                    #
-        #                                                                          #
-        # When using batch normalization, you'll need to pass self.bn_params[0] to #
-        # the forward pass for the first batch normalization layer, pass           #
-        # self.bn_params[1] to the forward pass for the second batch normalization #
-        # layer, etc.                                                              #
+        # 用dropout时,您需要将self.dropout_param传递给每个dropout正向传递              #
+        # 使用批处理规范化时,需要将self.bn_params[0]传递到第一批处理规范层的正向传递       #
+        # 将self.bn_params[1]传递到第二批处理规范层的正向传播                           #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
         hidden = {}
-        hidden['h0'] = X.reshape(X.shape[0], np.prod(X.shape[1:]))
+        hidden['h0'] = X.reshape(X.shape[0], np.prod(X.shape[1:]))  # np.prod 计算数组中所有元素的乘积
         if self.use_dropout:
             # dropout on the input layer
             hdrop, cache_hdrop = dropout_forward(hidden['h0'], self.dropout_param)
@@ -183,15 +177,16 @@ class FullyConnectedNet(object):
                 beta = self.params['beta' + str(idx)]
                 bn_param = self.bn_params['bn_param' + str(idx)]
 
-            # Computing of the forward pass.
-            # Special case of the last layer (output)
+            # 计算向前传播
+            # 最后一层（输出层）是特殊处理
             if idx == self.L:
                 h, cache_h = affine_forward(h, w, b)
                 hidden['h' + str(idx)] = h
                 hidden['cache_h' + str(idx)] = cache_h
 
-            # For all other layers
+            # 其他所有层
             else:
+                # 是否进行批量归一化
                 if self.normalization == "batchnorm":
                     h, cache_h = affine_norm_relu_forward(h, w, b, gamma, beta, bn_param)
                     hidden['h' + str(idx)] = h
@@ -200,7 +195,7 @@ class FullyConnectedNet(object):
                     h, cache_h = affine_relu_forward(h, w, b)
                     hidden['h' + str(idx)] = h
                     hidden['cache_h' + str(idx)] = cache_h
-
+                # 是否进行dropout
                 if self.use_dropout:
                     h = hidden['h' + str(idx)]
                     hdrop, cache_hdrop = dropout_forward(h, self.dropout_param)
@@ -274,13 +269,13 @@ class FullyConnectedNet(object):
                     hidden['db' + str(idx)] = db
 
         # w gradients where we add the regulariation term
-        list_dw = {key[1:]: val + self.reg * self.params[key[1:]] for key, val in hidden if key[:2] == 'dW'}
+        list_dw = {key[1:]: val + self.reg * self.params[key[1:]] for key, val in hidden.items() if key[:2] == 'dW'}
         # Paramerters b
-        list_db = {key[1:]: val for key, val in hidden if key[:2] == 'db'}
+        list_db = {key[1:]: val for key, val in hidden.items() if key[:2] == 'db'}
         # Parameters gamma
-        list_dgamma = {key[1:]: val for key, val in hidden if key[:6] == 'dgamma'}
+        list_dgamma = {key[1:]: val for key, val in hidden.items() if key[:6] == 'dgamma'}
         # Paramters beta
-        list_dbeta = {key[1:]: val for key, val in hidden if key[:5] == 'dbeta'}
+        list_dbeta = {key[1:]: val for key, val in hidden.items() if key[:5] == 'dbeta'}
 
         grads = {}
         grads.update(list_dw)
