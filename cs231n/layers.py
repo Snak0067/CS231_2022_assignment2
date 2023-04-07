@@ -421,13 +421,14 @@ def layernorm_forward(x, gamma, beta, ln_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    x_T = x.T
-    sample_mean = np.mean(x_T, axis=0)
-    sample_var = np.var(x_T, axis=0)
-    x_norm_T = (x_T - sample_mean) / np.sqrt(sample_var + eps)
-    x_norm = x_norm_T.T
-    out = x_norm * gamma + beta
-    cache = (x, x_norm, gamma, sample_mean, sample_var, eps)
+    # 我们只需要对输入取一个转置，则和BN的训练阶段差不多了
+    x = x.T  # (D, N )
+    _mean = np.mean(x, axis=0)  # (N,)
+    _var = np.var(x, axis=0)  # (N, )
+    x_hat = (x - _mean) / (np.sqrt(_var + eps))  # [D, N]
+    x_hat = x_hat.T  # [N, D]
+    out = x_hat * gamma + beta
+    cache = (gamma, x_hat, x, _mean, _var, eps)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -461,18 +462,19 @@ def layernorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    x, x_norm, gamma, sample_mean, sample_var, eps = cache
-    x_T = x.T
-    dout_T = dout.T
-    N = x_T.shape[0]
+    gamma, x_hat, x, _mean, _var, eps = cache
+    N = x_hat.shape[1]
+    dgamma = np.sum(dout * x_hat, axis=0)
     dbeta = np.sum(dout, axis=0)
-    dgamma = np.sum(x_norm * dout, axis=0)
+    dx_hat = (dout * gamma).T
+    # 把前面的BN代码复制过来
+    a = np.sqrt(_var + eps)
+    # 先计算方差
+    dvar = np.sum(- 0.5 * (x - _mean) * dx_hat / a ** 3, axis=0)
+    dmean = np.sum(- dx_hat / a, axis=0) + dvar * np.sum(-2 * (x - _mean), axis=0) / N
+    dx = dx_hat / a + dmean / N + 2 * dvar * (x - _mean) / N
 
-    dx_norm = dout_T * gamma[:, np.newaxis]
-    dv = ((x_T - sample_mean) * -0.5 * (sample_var + eps) ** -1.5 * dx_norm).sum(axis=0)
-    dm = (dx_norm * -1 * (sample_var + eps) ** -0.5).sum(axis=0) + (dv * (x_T - sample_mean) * -2 / N).sum(axis=0)
-    dx_T = dx_norm / (sample_var + eps) ** 0.5 + dv * 2 * (x_T - sample_mean) / N + dm / N
-    dx = dx_T.T
+    dx = dx.T
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
