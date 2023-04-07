@@ -161,9 +161,6 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        # Now I just write code without batch/layer norm and dropout layer--2019/8/18
-        # Today I add dropout layer after ReLU--2019/8/19
-        # Today I add batch normalization layer before ReLU--2019/8/20
         XX = X.reshape(X.shape[0], -1).copy()
         N, D = XX.shape
 
