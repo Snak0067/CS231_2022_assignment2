@@ -578,22 +578,22 @@ def dropout_backward(dout, cache):
 def conv_forward_naive(x, w, b, conv_param):
     """A naive implementation of the forward pass for a convolutional layer.
 
-    The input consists of N data points, each with C channels, height H and
-    width W. We convolve each input with F different filters, where each filter
-    spans all C channels and has height HH and width WW.
+    输入由 N个数据点组成，每个数据点具有 C个通道，高度 H和宽度 W
+    我们将每个输入与 F个不同的滤波器卷积，其中每个滤波器有 C个通道并具有高度 HH和宽度 WW
 
     Input:
     - x: Input data of shape (N, C, H, W)
     - w: Filter weights of shape (F, C, HH, WW)
     - b: Biases, of shape (F,)
-    - conv_param: A dictionary with the following keys:
+    - conv_param: A dictionary with the following keys:具有以下键的词典
       - 'stride': The number of pixels between adjacent receptive fields in the
-        horizontal and vertical directions.
-      - 'pad': The number of pixels that will be used to zero-pad the input.
+        horizontal and vertical directions.水平和垂直方向上相邻感受野之间的像素数
+      - 'pad': The number of pixels that will be used to zero-pad the input.将用于对输入进行零填充的像素数
 
     During padding, 'pad' zeros should be placed symmetrically (i.e equally on both sides)
     along the height and width axes of the input. Be careful not to modfiy the original
     input x directly.
+    在填充过程中，“填充”零应沿输入的高度和宽度轴对称放置（即在两侧相等）。注意不要直接修改原始输入x。
 
     Returns a tuple of:
     - out: Output data, of shape (N, F, H', W') where H' and W' are given by
@@ -608,7 +608,30 @@ def conv_forward_naive(x, w, b, conv_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H, W = x.shape
+    F, _, HH, WW = w.shape
+    stride = conv_param['stride']
+    pad = conv_param['pad']
+    # Check for parameter sanity
+    assert (H + 2 * pad - HH) % stride == 0, 'Sanity Check Status: Conv Layer Failed in Height'
+    assert (W + 2 * pad - WW) % stride == 0, 'Sanity Check Status: Conv Layer Failed in Width'
+    # 为每个图像添加填充 numpy.pad(array, pad_width, mode=‘constant’, **kwargs)
+    # pad_width 每个轴（axis）边缘需要填充的数值数目,(before_1, after_1), … (before_N, after_N)）
+    # x_pad 即对x的每个图像的每个通道的长和宽进行zero-padding,
+    x_pad = np.pad(x, ((0,), (0,), (pad,), (pad,)), 'constant')
+    # 输出数据的大小
+    Hh = 1 + (H + 2 * pad - HH) // stride
+    Hw = 1 + (W + 2 * pad - WW) // stride
+
+    out = np.zeros((N, F, Hh, Hw))
+
+    for n in range(N):  # 首先，对所有图像进行迭代
+        for f in range(F):  # 其次，迭代所有内核
+            for k in range(Hh):
+                for l in range(Hw):
+                    # 每个元素是通过将高亮显示的输入（蓝色）与过滤器（红色）逐元素相乘、求和，然后将结果偏移偏移来计算的。
+                    x_area = x_pad[n, :, k * stride:k * stride + HH, l * stride:l * stride + WW]
+                    out[n, f, k, l] = np.sum(x_area * w[f, :]) + b[f]
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -636,7 +659,30 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x, w, b, conv_param = cache
+    N, C, H, W = x.shape
+    F, _, HH, WW = w.shape
+    stride = conv_param.get('stride', 1)
+    pad = conv_param.get('pad', 0)
+    # Padding
+    x_pad = np.pad(x, ((0, 0), (0, 0), (pad, pad), (pad, pad)), 'constant', constant_values=0)
+    H_prime = 1 + (H + 2 * pad - HH) // stride
+    W_prime = 1 + (W + 2 * pad - WW) // stride
+    # Construct output
+    dx_pad = np.zeros_like(x_pad)
+    dx = np.zeros_like(x)
+    dw = np.zeros_like(w)
+    db = np.zeros_like(b)
+    # Naive Loops
+    for n in range(N):
+        for f in range(F):
+            db[f] += dout[n, f].sum()
+            for j in range(0, H_prime):
+                for i in range(0, W_prime):
+                    dw[f] += x_pad[n, :, j * stride:j * stride + HH, i * stride:i * stride + WW] * dout[n, f, j, i]
+                    dx_pad[n, :, j * stride:j * stride + HH, i * stride:i * stride + WW] += w[f] * dout[n, f, j, i]
+    # Extract dx from dx_pad
+    dx = dx_pad[:, :, pad:pad + H, pad:pad + W]
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -647,13 +693,13 @@ def conv_backward_naive(dout, cache):
 
 def max_pool_forward_naive(x, pool_param):
     """A naive implementation of the forward pass for a max-pooling layer.
-
+    最大池化层的前向传递的实现
     Inputs:
     - x: Input data, of shape (N, C, H, W)
     - pool_param: dictionary with the following keys:
-      - 'pool_height': The height of each pooling region
-      - 'pool_width': The width of each pooling region
-      - 'stride': The distance between adjacent pooling regions
+      - 'pool_height': The height of each pooling region 每个池化区域的高度
+      - 'pool_width': The width of each pooling region   每个池化区域的宽度
+      - 'stride': The distance between adjacent pooling regions 相邻池化区域之间的距离
 
     No padding is necessary here, eg you can assume:
       - (H - pool_height) % stride == 0
@@ -671,7 +717,22 @@ def max_pool_forward_naive(x, pool_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H, W = x.shape
+    HH = pool_param.get('pool_height', 2)
+    WW = pool_param.get('pool_width', 2)
+    stride = pool_param.get('stride', 2)
+    assert (H - HH) % stride == 0, 'Sanity Check Status: Max Pool Failed in Height'
+    assert (W - WW) % stride == 0, 'Sanity Check Status: Max Pool Failed in Width'
+    H_prime = 1 + (H - HH) // stride
+    W_prime = 1 + (W - WW) // stride
+    # Construct output
+    out = np.zeros((N, C, H_prime, W_prime))
+    for n in range(N):
+        for j in range(H_prime):
+            for i in range(W_prime):
+                out[n, :, j, i] = np.amax(
+                    x[n, :, j * stride:j * stride + HH, i * stride:i * stride + WW], axis=(-1, -2)
+                )
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
