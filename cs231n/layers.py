@@ -731,6 +731,7 @@ def max_pool_forward_naive(x, pool_param):
         for j in range(H_prime):
             for i in range(W_prime):
                 out[n, :, j, i] = np.amax(
+                    # axis=(),如果这是一个int元组，则在多个轴上选择最大值，而不是像以前那样选择单个轴或所有轴
                     x[n, :, j * stride:j * stride + HH, i * stride:i * stride + WW], axis=(-1, -2)
                 )
 
@@ -758,7 +759,23 @@ def max_pool_backward_naive(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x, pool_param = cache
+    N, C, H, W = x.shape
+    HH = pool_param.get('pool_height', 2)
+    WW = pool_param.get('pool_width', 2)
+    stride = pool_param.get('stride', 2)
+    H_prime = 1 + (H - HH) // stride
+    W_prime = 1 + (W - WW) // stride
+    # Construct output
+    dx = np.zeros_like(x)
+    # Naive Loops
+    for n in range(N):
+        for c in range(C):
+            for j in range(H_prime):
+                for i in range(W_prime):
+                    ind = np.argmax(x[n, c, j * stride:j * stride + HH, i * stride:i * stride + WW])
+                    ind1, ind2 = np.unravel_index(ind, (HH, WW))
+                    dx[n, c, j * stride:j * stride + HH, i * stride:i * stride + WW][ind1, ind2] = dout[n, c, j, i]
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
