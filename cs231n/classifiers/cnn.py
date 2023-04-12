@@ -9,38 +9,39 @@ from ..layer_utils import *
 class ThreeLayerConvNet(object):
     """
     A three-layer convolutional network with the following architecture:
-
+    具有以下架构的三层卷积网络：
     conv - relu - 2x2 max pool - affine - relu - affine - softmax
 
     The network operates on minibatches of data that have shape (N, C, H, W)
     consisting of N images, each with height H and width W and with C input
     channels.
+    该网络在具有由 N个图像组成的形状（N,C,H,W）的数据的小批量上操作,每个图像具有高度 H和宽度 W以及 C个输入通道。
     """
 
     def __init__(
-        self,
-        input_dim=(3, 32, 32),
-        num_filters=32,
-        filter_size=7,
-        hidden_dim=100,
-        num_classes=10,
-        weight_scale=1e-3,
-        reg=0.0,
-        dtype=np.float32,
+            self,
+            input_dim=(3, 32, 32),
+            num_filters=32,
+            filter_size=7,
+            hidden_dim=100,
+            num_classes=10,
+            weight_scale=1e-3,
+            reg=0.0,
+            dtype=np.float32,
     ):
         """
         Initialize a new network.
 
         Inputs:
         - input_dim: Tuple (C, H, W) giving size of input data
-        - num_filters: Number of filters to use in the convolutional layer
-        - filter_size: Width/height of filters to use in the convolutional layer
-        - hidden_dim: Number of units to use in the fully-connected hidden layer
-        - num_classes: Number of scores to produce from the final affine layer.
-        - weight_scale: Scalar giving standard deviation for random initialization
+        - num_filters: Number of filters to use in the convolutional layer          卷积层中使用的滤波器数量
+        - filter_size: Width/height of filters to use in the convolutional layer    卷积层中使用的滤波器的宽度/高度
+        - hidden_dim: Number of units to use in the fully-connected hidden layer    要在完全连接的隐藏层中使用的单元数
+        - num_classes: Number of scores to produce from the final affine layer.     从最终仿射层生成的分数数。
+        - weight_scale: Scalar giving standard deviation for random initialization  标量给出随机初始化的标准偏差
           of weights.
-        - reg: Scalar giving L2 regularization strength
-        - dtype: numpy datatype to use for computation.
+        - reg: Scalar giving L2 regularization strength                             标量给出L2正则化强度
+        - dtype: numpy datatype to use for computation.                             用于计算的numpy数据类型。
         """
         self.params = {}
         self.reg = reg
@@ -63,7 +64,14 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        C, H, W = input_dim
+        self.params['W1'] = weight_scale * np.random.randn(num_filters, C, filter_size, filter_size)  # 卷积层权重及偏移
+        self.params['b1'] = np.zeros(num_filters)
+        # Assuming a shape identical to the input image for the conv layer output
+        self.params['W2'] = weight_scale * np.random.randn(num_filters * H * W // 4, hidden_dim)
+        self.params['b2'] = np.zeros(hidden_dim)
+        self.params['W3'] = weight_scale * np.random.randn(hidden_dim, num_classes)
+        self.params['b3'] = np.zeros(num_classes)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -102,7 +110,11 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        # Forward Pass: conv - relu - 2x2 max pool - affine - relu - affine - softmax
+        out1, cache1 = conv_relu_pool_forward(X, self.params['W1'], self.params['b1'], conv_param, pool_param)
+        out2, cache2 = affine_relu_forward(out1, self.params['W2'], self.params['b2'])
+        out3, cache3 = affine_forward(out2, self.params['W3'], self.params['b3'])
+        scores = out3
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -125,7 +137,14 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        loss, dout = softmax_loss(out3, y)
+        loss += self.reg * np.sum([np.sum(self.params['W%d' % i] ** 2) for i in [1, 2, 3]])
+        dout, grads['W3'], grads['b3'] = affine_backward(dout, cache3)
+        grads['W3'] += 2 * self.reg * self.params['W3']
+        dout, grads['W2'], grads['b2'] = affine_relu_backward(dout, cache2)
+        grads['W2'] += 2 * self.reg * self.params['W2']
+        _, grads['W1'], grads['b1'] = conv_relu_pool_backward(dout, cache1)
+        grads['W1'] += 2 * self.reg * self.params['W1']
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
