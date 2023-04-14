@@ -788,18 +788,22 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     """Computes the forward pass for spatial batch normalization.
 
     Inputs:
-    - x: Input data of shape (N, C, H, W)
-    - gamma: Scale parameter, of shape (C,)
-    - beta: Shift parameter, of shape (C,)
-    - bn_param: Dictionary with the following keys:
+  - x: Input data of shape (N, C, H, W)
+  - gamma: Scale parameter, of shape (C,)
+  - beta: Shift parameter, of shape (C,)
+  - bn_param: Dictionary with the following keys:
       - mode: 'train' or 'test'; required
       - eps: Constant for numeric stability
       - momentum: Constant for running mean / variance. momentum=0 means that
         old information is discarded completely at every time step, while
         momentum=1 means that new information is never incorporated. The
         default of momentum=0.9 should work well in most situations.
+        用于运行平均值/方差的常数.动量=0意味着旧信息在每个时间步长都被完全丢弃,
+        而动量=1意味着新信息永远不会被合并.动量=0.9的默认值在大多数情况下应该都能很好地工作.
       - running_mean: Array of shape (D,) giving running mean of features
-      - running_var Array of shape (D,) giving running variance of features
+        形状如(D,)的数组,给出特征运行的平均值
+      - running_var: Array of shape (D,) giving running variance of features
+        形状如(D,)的数组,给出特征的连续变化
 
     Returns a tuple of:
     - out: Output data, of shape (N, C, H, W)
@@ -816,7 +820,45 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # dict.get(key[, value])  value -- 可选，如果指定键的值不存在时，返回该默认值。
+    mode = bn_param['mode']
+    eps = bn_param.get('eps', 1e-5)
+    momentum = bn_param.get('momentum', 0.9)
+
+    N, C, H, W = x.shape
+    running_mean = bn_param.get('running_mean', np.zeros((1, C, 1, 1), dtype=x.dtype))
+    running_var = bn_param.get('running_var', np.zeros((1, C, 1, 1), dtype=x.dtype))
+
+    if mode == 'train':
+        # Mean
+        mu = np.mean(x, axis=(0, 2, 3)).reshape(1, C, 1, 1)
+        # Variance
+        var = 1 / float(N * H * W) * np.sum((x - mu) ** 2, axis=(0, 2, 3)).reshape(1, C, 1, 1)
+        # Normalized Data
+        x_hat = (x - mu) / np.sqrt(var + eps)
+        # Scale and Shift
+        y = gamma.reshape(1, C, 1, 1) * x_hat + beta.reshape(1, C, 1, 1)
+        out = y
+
+        # Make the record of means and variances in running parameters
+        running_mean = momentum * running_mean + (1 - momentum) * mu
+        running_var = momentum * running_var + (1 - momentum) * var
+
+        cache = (x_hat, mu, var, eps, gamma, beta, x)
+
+    elif mode == 'test':
+        # Normalized Data
+        x_hat = (x - running_mean) / np.sqrt(running_var + eps)
+        # Scale and Shift
+        y = gamma.reshape(1, C, 1, 1) * x_hat + beta.reshape(1, C, 1, 1)
+        out = y
+
+    else:
+        raise ValueError('Invalid forward batchnorm mode "%s"' % mode)
+
+    # Store the updated running means back into bn_param
+    bn_param['running_mean'] = running_mean
+    bn_param['running_var'] = running_var
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -849,7 +891,29 @@ def spatial_batchnorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x_hat, mu, var, eps, gamma, beta, x = cache
+    N, C, H, W = dout.shape
+
+    dbeta = np.sum(dout, axis=(0, 2, 3))
+    dgamma = np.sum(dout * x_hat, axis=(0, 2, 3))
+
+    # for dx visit this backprop diagram:
+    # https://kratzert.github.io/2016/02/12/understanding-the-gradient-flow-through-the-batch-normalization-layer.html
+
+    gamma_reshape = gamma.reshape(1, C, 1, 1)
+    beta_reshape = beta.reshape(1, C, 1, 1)
+    Nt = N * H * W
+
+    dx_hat = dout * gamma_reshape
+    dxmu1 = dx_hat * 1 / np.sqrt(var + eps)
+    divar = np.sum(dx_hat * (x - mu), axis=(0, 2, 3)).reshape(1, C, 1, 1)
+    dvar = divar * -1 / 2 * (var + eps) ** (-3 / 2)
+    dsq = 1 / Nt * np.broadcast_to(np.broadcast_to(np.squeeze(dvar), (W, H, C)).transpose(2, 1, 0), (N, C, H, W))
+    dxmu2 = 2 * (x - mu) * dsq
+    dx1 = dxmu1 + dxmu2
+    dmu = -1 * np.sum(dxmu1 + dxmu2, axis=(0, 2, 3))
+    dx2 = 1 / Nt * np.broadcast_to(np.broadcast_to(np.squeeze(dmu), (W, H, C)).transpose(2, 1, 0), (N, C, H, W))
+    dx = dx1 + dx2
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################

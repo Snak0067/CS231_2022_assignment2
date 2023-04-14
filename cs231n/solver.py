@@ -264,10 +264,7 @@ class Solver(object):
 
             # Maybe print training loss
             if self.verbose and t % self.print_every == 0:
-                print(
-                    "(Iteration %d / %d) loss: %f"
-                    % (t + 1, num_iterations, self.loss_history[-1])
-                )
+                print("(Iteration %d / %d) loss: %f" % (t + 1, num_iterations, self.loss_history[-1]))
 
             # 在每个epoch结束时，递增epoch计数器并衰减学习速率(learning_rate)
             epoch_end = (t + 1) % iterations_per_epoch == 0
@@ -280,12 +277,8 @@ class Solver(object):
             first_it = t == 0
             last_it = t == num_iterations - 1
             if first_it or last_it or epoch_end:
-                train_acc = self.check_accuracy(
-                    self.X_train, self.y_train, num_samples=self.num_train_samples
-                )
-                val_acc = self.check_accuracy(
-                    self.X_val, self.y_val, num_samples=self.num_val_samples
-                )
+                train_acc = self.check_accuracy(self.X_train, self.y_train, num_samples=self.num_train_samples)
+                val_acc = self.check_accuracy(self.X_val, self.y_val, num_samples=self.num_val_samples)
                 self.train_acc_history.append(train_acc)
                 self.val_acc_history.append(val_acc)
                 self._save_checkpoint()

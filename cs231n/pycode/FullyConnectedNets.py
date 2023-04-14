@@ -5,6 +5,8 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+
+from cs231n.classifiers.cnn import ThreeLayerConvNet
 from cs231n.classifiers.fc_net import *
 from cs231n.data_utils import get_CIFAR10_data
 from cs231n.gradient_check import eval_numerical_gradient, eval_numerical_gradient_array
@@ -275,7 +277,7 @@ def plot_training_history(title, label, baseline, bn_solvers, plot_fn, bl_marker
     plt.legend(loc='lower center', ncol=num_bn + 1)
 
 
-if __name__ == '__main__':
+def batchnorm_layernorm():
     batch_sizes = [5, 10, 50, 500]
     # bn_solvers_bsize, solver_bsize, batch_sizes = run_batchsize_experiments('batchnorm')
     bn_solvers_bsize, solver_bsize, batch_sizes = run_batchsize_experiments('layernorm')
@@ -289,3 +291,23 @@ if __name__ == '__main__':
 
     plt.gcf().set_size_inches(15, 10)
     plt.show()
+
+
+def three_layer_convolutional_network():
+    model = ThreeLayerConvNet(weight_scale=0.001, hidden_dim=500, reg=0.001)
+
+    solver = Solver(
+        model,
+        data,
+        num_epochs=1,
+        batch_size=50,
+        update_rule='adam',
+        optim_config={'learning_rate': 1e-3, },
+        verbose=True,
+        print_every=20
+    )
+    solver.train()
+
+
+if __name__ == '__main__':
+    three_layer_convolutional_network()
