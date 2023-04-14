@@ -585,6 +585,7 @@ def sequential_Three_layer_convNet():
     optimizer = optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
     best_acc, best_model = train_part34(model, optimizer, epochs=10)
     print('best_accuracy: %.2f' % best_acc)
+
     num_correct, num_samples, acc = check_accuracy_part34(loader_test, best_model)
     print('Got %d / %d correct (%.2f)' % (num_correct, num_samples, 100 * acc))
 
